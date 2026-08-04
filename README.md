@@ -144,18 +144,63 @@ Full details in [`results/findings_report.md`](results/findings_report.md).
 These results validate the framework on a small pilot cohort and are **not**
 final clinical conclusions — the finalized study targets ~300 patients.
 
+**Design:** all-to-all evaluation matrix — the same 5 open-weight models act as
+both *orchestrator* (generating the treatment plan) and *judge* (scoring every
+orchestrator). This yields **25 judge × orchestrator pairs** and **454
+evaluations** over 20 patients.
+
+### 1. Aggregate across all judge × orchestrator pairs
+
+Averages over the full matrix (all 25 pairs / 454 evaluations).
+
 | Metric | Mean |
 |---|---|
-| RES | 65.9% |
-| Binary accuracy | 0.678 |
-| Reasoning Completeness | 80.7% |
-| Treatment Completeness | 93.3% |
+| Reasoning Efficiency Score (RES) | 65.9% |
+| Binary clinical accuracy (IO vs IOCT) | 0.678 |
+| Reasoning Completeness (8-item checklist) | 80.7% |
+| Treatment Plan Completeness (8-item checklist) | 93.3% |
 | Factuality | 86.2% |
-| Faithfulness | 3.49 / 5 |
+| Faithfulness (Likert 1–5) | 3.49 / 5 |
 
-Key observations: a **systemic positive (IOCT) bias** across models, **judge
-rigidity** in the strongest judges, and notably **balanced self-evaluation**
-for `baichuan-m2-32b` (self-eval accuracy 0.842).
+### 2. Consensus per orchestrator (averaged over all judges)
+
+Scores for each *orchestrator* (the agent under test), aggregated across all 5
+judges (mean for continuous metrics, majority vote for accuracy).
+
+| Orchestrator | RES (mean ± std) | Binary accuracy |
+|---|---|---|
+| `nemotron-3-nano-30B-A3B` | 70.0 ± 12.3 | 0.550 |
+| `huatuoGPT-3-32b` | 69.7 ± 22.8 | 0.692 |
+| `baichuan-m2-32b` | 69.6 ± 10.6 | **0.800** |
+| `gpt-oss-20b` | 63.1 ± 11.5 | 0.650 |
+| `qwen3-30B-A3B-Thinking` | 58.5 ± 13.3 | 0.700 |
+
+### 3. Per judge (averaged over all orchestrators)
+
+Scores of each *judge*, aggregated across all 5 orchestrators it evaluated.
+
+| Judge | Mean RES | Binary accuracy |
+|---|---|---|
+| `baichuan-m2-32b` | 68.5 | 0.659 |
+| `gpt-oss-20b` | 56.6 | 0.602 |
+| `huatuoGPT-3-32b` | **76.5** | 0.667 |
+| `nemotron-3-nano-30B-A3B` | 66.0 | 0.720 |
+| `qwen3-30B-A3B-Thinking` | 62.5 | **0.742** |
+
+### Key observations
+
+* **Systemic positive (IOCT) bias** — models predict `IOCT [1]` more often than
+  it occurs in the ground truth (301 predicted vs 273 true positive), trading
+  high sensitivity for frequent false positives.
+* **Judge rigidity** — the strongest judges (`nemotron-3-nano-30B-A3B`,
+  `qwen3-30B-A3B-Thinking`) produce near-identical matrices regardless of the
+  orchestrator they score.
+* **Balanced self-evaluation** — `baichuan-m2-32b` is the only model whose
+  self-evaluation is notably balanced (self-eval binary accuracy 0.842).
+
+Per-pair breakdowns (all 25 combinations) are in
+[`results/findings_report.md`](results/findings_report.md) and can be
+regenerated from `notebooks/post_run_analysis.ipynb`.
 
 ## License
 
