@@ -1,67 +1,82 @@
 {
-  "config": {
-    "steps": {
-      "step5_decision": {
-        "model": "qwen3-30B-A3B-Thinking"
-      }
+    "config": {
+        "steps": {
+            "step5_decision": {
+                "model": "qwen3-30B-A3B-Thinking"
+            }
+        }
+    },
+    "pipeline_data": {
+        "patient_id": "SYNTH-003",
+        "patient_status": {
+            "i3lung_id": "SYNTH003",
+            "histology": "Adenocarcinoma",
+            "grade": "G3",
+            "stage": "IV",
+            "pdl1_tps": "85%",
+            "ecog_ps": 1,
+            "smoking_status": "Never smoker",
+            "biomarkers": {
+                "EGFR": "Wild-type",
+                "ALK": "Wild-type",
+                "ROS1": "Wild-type",
+                "BRAF": "Wild-type",
+                "KRAS": "Wild-type"
+            },
+            "metastatic_sites": [
+                "Pleura",
+                "Bone"
+            ],
+            "comorbidities": [
+                "Diabetes mellitus type 2"
+            ],
+            "contraindications": {
+                "autoimmune_disease": "None",
+                "interstitial_lung_disease": "None",
+                "corticosteroids": "None"
+            },
+            "data_quality": "high"
+        },
+        "therapy_decision": {
+            "reasoning_steps": "A 70-year-old never smoker with stage IV adenocarcinoma, PD-L1 85%, no driver mutations and pleural/bone metastases. High PD-L1 without contraindication supports first-line pembrolizumab monotherapy, which is guideline-preferred and avoids chemotherapy-related toxicity.",
+            "best_therapy_overall": {
+                "therapy_class": "IO",
+                "exact_drugs": [
+                    "Pembrolizumab"
+                ],
+                "reason": "PD-L1 >= 50% without contraindication makes monotherapy the preferred first-line option.",
+                "confidence": "0.92",
+                "sources": [
+                    "KEYNOTE-024",
+                    "ESMO 2024"
+                ]
+            },
+            "best_therapy_reimbursed": {
+                "therapy_class": "IO",
+                "exact_drugs": [
+                    "Pembrolizumab"
+                ],
+                "reason": "Pembrolizumab monotherapy reimbursed for PD-L1 >= 50% metastatic NSCLC.",
+                "confidence": "0.92",
+                "sources": [
+                    "KEYNOTE-024",
+                    "AIFA"
+                ]
+            },
+            "raw_decision": "Recommended first-line therapy: Pembrolizumab monotherapy (immunotherapy alone)."
+        },
+        "step5_logs": [
+            {
+                "output": "TREATMENT PLAN: Pembrolizumab 200 mg IV every 3 weeks. Continue until progression or unacceptable toxicity, up to 2 years. Local palliative RT for symptomatic bone lesions.",
+                "reasoning": "PD-L1 high, no contraindications: pembrolizumab monotherapy is the guideline-preferred first-line option."
+            }
+        ],
+        "raw_messages": [
+            {
+                "type": "tool",
+                "name": "retrieve_medical_documents",
+                "content": "First-line treatment for patients with advanced NSCLC with PS 0-1, tumour PD-L1 >= 50% and without contraindication for ICI: Pembrolizumab is considered a standard first-line option [I, A; ESMO-MCBS v1.1 score: 5]. Monotherapy ICI is not recommended for tumours with PD-L1 < 50% [I, D]."
+            }
+        ]
     }
-  },
-  "pipeline_data": {
-    "patient_id": "SYNTH-003",
-    "patient_status": {
-      "i3lung_id": "SYNTH003",
-      "histology": "Adenocarcinoma",
-      "grade": "G3",
-      "stage": "IV",
-      "pdl1_tps": "85%",
-      "ecog_ps": 1,
-      "smoking_status": "Never smoker",
-      "biomarkers": {
-        "EGFR": "Wild-type",
-        "ALK": "Wild-type",
-        "ROS1": "Wild-type",
-        "BRAF": "Wild-type",
-        "KRAS": "Wild-type"
-      },
-      "metastatic_sites": ["Pleura", "Bone"],
-      "comorbidities": ["Diabetes mellitus type 2"],
-      "contraindications": {
-        "autoimmune_disease": "None",
-        "interstitial_lung_disease": "None",
-        "corticosteroids": "None"
-      },
-      "data_quality": "high"
-    },
-    "therapy_decision": {
-      "reasoning_steps": "A 70-year-old never smoker with stage IV adenocarcinoma, PD-L1 85%, no driver mutations and pleural/bone metastases. High PD-L1 without contraindication supports first-line pembrolizumab monotherapy, which is guideline-preferred and avoids chemotherapy-related toxicity.",
-      "best_therapy_overall": {
-        "therapy_class": "IO",
-        "exact_drugs": ["Pembrolizumab"],
-        "reason": "PD-L1 >= 50% without contraindication makes monotherapy the preferred first-line option.",
-        "confidence": "0.92",
-        "sources": ["KEYNOTE-024", "ESMO 2024"]
-      },
-      "best_therapy_reimbursed": {
-        "therapy_class": "IO",
-        "exact_drugs": ["Pembrolizumab"],
-        "reason": "Pembrolizumab monotherapy reimbursed for PD-L1 >= 50% metastatic NSCLC.",
-        "confidence": "0.92",
-        "sources": ["KEYNOTE-024", "AIFA"]
-      },
-      "raw_decision": "Recommended first-line therapy: Pembrolizumab monotherapy (immunotherapy alone)."
-    },
-    "step5_logs": [
-      {
-        "output": "TREATMENT PLAN: Pembrolizumab 200 mg IV every 3 weeks. Continue until progression or unacceptable toxicity, up to 2 years. Local palliative RT for symptomatic bone lesions.",
-        "reasoning": "PD-L1 high, no contraindications: pembrolizumab monotherapy is the guideline-preferred first-line option."
-      }
-    ],
-    "raw_messages": [
-      {
-        "type": "tool",
-        "name": "retrieve_medical_documents",
-        "content": "First-line treatment for patients with advanced NSCLC with PS 0-1, tumour PD-L1 >= 50% and without contraindication for ICI: Pembrolizumab is considered a standard first-line option [I, A; ESMO-MCBS v1.1 score: 5]. Monotherapy ICI is not recommended for tumours with PD-L1 < 50% [I, D]."
-      }
-    ]
-  }
 }

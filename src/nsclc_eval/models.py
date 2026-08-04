@@ -28,10 +28,12 @@ class EfficiencyCategory(str, Enum):
 
 class StepClassification(BaseModel):
     step_id: int
-    original_text: str = Field(description="The original text/log from the agent for this step")
+    original_text: str = Field(
+        description="The original text/log from the agent for this step")
     claim: str
     classification: EfficiencyCategory
-    rationale: str = Field(description="Explanation for why this step falls into this category")
+    rationale: str = Field(
+        description="Explanation for why this step falls into this category")
 
     @field_validator('classification', mode='before')
     @classmethod
@@ -62,9 +64,12 @@ class TreatmentCategory(str, Enum):
 
 
 class AccuracyExtraction(BaseModel):
-    raw_prediction: str = Field(description="Raw text extracted from the model's final decision")
-    predicted_label: int = Field(description="Binary label: 0 (IO) or 1 (IOCT)")
-    category: TreatmentCategory = Field(description="Categorical label for the predicted treatment")
+    raw_prediction: str = Field(
+        description="Raw text extracted from the model's final decision")
+    predicted_label: int = Field(
+        description="Binary label: 0 (IO) or 1 (IOCT)")
+    category: TreatmentCategory = Field(
+        description="Categorical label for the predicted treatment")
     rationale: str = Field(description="Explanation for the classification")
 
     @field_validator('category', mode='before')
@@ -202,15 +207,20 @@ class FactualityResult(BaseModel):
                 verdicts = []
                 for c in claims:
                     v = (
-                        cls._claim_value(c, 'verdict', 'status', 'classification')
+                        cls._claim_value(
+                            c, 'verdict', 'status', 'classification')
                         or 'unsupported'
                     )
                     verdicts.append(str(v).lower())
-                data['correct_claims'] = sum(1 for v in verdicts if v == 'correct')
-                data['incorrect_claims'] = sum(1 for v in verdicts if v == 'incorrect')
-                data['unsupported_claims'] = sum(1 for v in verdicts if v not in ('correct', 'incorrect'))
+                data['correct_claims'] = sum(
+                    1 for v in verdicts if v == 'correct')
+                data['incorrect_claims'] = sum(
+                    1 for v in verdicts if v == 'incorrect')
+                data['unsupported_claims'] = sum(
+                    1 for v in verdicts if v not in ('correct', 'incorrect'))
                 total = data['total_claims']
-                data['factuality_score'] = (data['correct_claims'] / total * 100) if total else 0.0
+                data['factuality_score'] = (
+                    data['correct_claims'] / total * 100) if total else 0.0
         return data
 
 

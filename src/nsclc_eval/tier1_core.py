@@ -51,15 +51,19 @@ def _extract_step_texts(step_blob: str) -> List[str]:
 
     extracted_steps = []
     current_step_lines = []
-    lines = [line.strip() for line in str(step_blob).replace("\r", "\n").split("\n") if line.strip()]
-    has_explicit_steps = any(step_header_pattern.match(l) or numeric_pattern.match(l) for l in lines)
+    lines = [line.strip() for line in str(step_blob).replace(
+        "\r", "\n").split("\n") if line.strip()]
+    has_explicit_steps = any(step_header_pattern.match(
+        l) or numeric_pattern.match(l) for l in lines)
 
     if has_explicit_steps:
         for line in lines:
-            match = step_header_pattern.match(line) or numeric_pattern.match(line)
+            match = step_header_pattern.match(
+                line) or numeric_pattern.match(line)
             if match:
                 if current_step_lines:
-                    extracted_steps.append(" ".join(current_step_lines).strip())
+                    extracted_steps.append(
+                        " ".join(current_step_lines).strip())
                     current_step_lines = []
                 remainder = match.group(1).strip()
                 if remainder:
@@ -100,7 +104,8 @@ def classify_reasoning_steps(atomic_steps: str) -> List[StepClassification]:
 
     assessments = [None] * len(steps)
     with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(process_step, i, step_text) for i, step_text in enumerate(steps, 1)]
+        futures = [executor.submit(process_step, i, step_text)
+                   for i, step_text in enumerate(steps, 1)]
         for future in futures:
             i, assessment = future.result()
             assessments[i - 1] = assessment

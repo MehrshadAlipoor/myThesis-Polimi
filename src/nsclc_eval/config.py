@@ -22,13 +22,15 @@ from openai import OpenAI
 # Paths (overridable via environment variables)
 # ---------------------------------------------------------------------
 DATA_DIR = os.environ.get("NSCLC_EVAL_DATA_DIR", "data/sample")
-GROUND_TRUTH_CSV = os.environ.get("NSCLC_EVAL_GT_CSV", "data/sample/sample_ground_truth.csv")
+GROUND_TRUTH_CSV = os.environ.get(
+    "NSCLC_EVAL_GT_CSV", "data/sample/sample_ground_truth.csv")
 MODELS_INI = os.environ.get("NSCLC_EVAL_MODELS_INI", "config/models.ini")
 
 # ---------------------------------------------------------------------
 # LLM client
 # ---------------------------------------------------------------------
-LLAMA_SERVER_URL = os.environ.get("NSCLC_EVAL_SERVER_URL", "http://localhost:8080")
+LLAMA_SERVER_URL = os.environ.get(
+    "NSCLC_EVAL_SERVER_URL", "http://localhost:8080")
 client: OpenAI = OpenAI(base_url=f"{LLAMA_SERVER_URL}/v1", api_key="sk-local")
 
 SEED = 42
@@ -96,11 +98,14 @@ def restart_llama_server(model_name: str) -> None:
     Restarting flushes GPU VRAM so a new judge model can be loaded. The model
     is mounted from ``models.ini`` presets and loads lazily on first request.
     """
-    print(f"🔄 Restarting {DOCKER_CONTAINER_NAME} to clear VRAM for '{model_name}'...")
+    print(
+        f"🔄 Restarting {DOCKER_CONTAINER_NAME} to clear VRAM for '{model_name}'...")
 
     # Step 1: Stop and remove old container
-    subprocess.run(["docker", "stop", DOCKER_CONTAINER_NAME], capture_output=True)
-    subprocess.run(["docker", "rm", DOCKER_CONTAINER_NAME], capture_output=True)
+    subprocess.run(["docker", "stop", DOCKER_CONTAINER_NAME],
+                   capture_output=True)
+    subprocess.run(["docker", "rm", DOCKER_CONTAINER_NAME],
+                   capture_output=True)
     time.sleep(5)  # Wait for VRAM to be freed
 
     # Step 2: Start new container with the lab workstation's exact arguments
@@ -137,4 +142,5 @@ def restart_llama_server(model_name: str) -> None:
             pass
         time.sleep(1)
 
-    raise RuntimeError(f"llama-cpp-server failed to start within {HEALTH_TIMEOUT}s")
+    raise RuntimeError(
+        f"llama-cpp-server failed to start within {HEALTH_TIMEOUT}s")

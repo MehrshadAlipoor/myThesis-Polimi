@@ -26,8 +26,10 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="nsclc_eval",
         description="LLM-as-a-Judge evaluation of NSCLC therapy agents.",
     )
-    parser.add_argument("--data-dir", default=config.DATA_DIR, help="Directory of patient JSON files.")
-    parser.add_argument("--gt", default=config.GROUND_TRUTH_CSV, help="Ground-truth CSV path.")
+    parser.add_argument("--data-dir", default=config.DATA_DIR,
+                        help="Directory of patient JSON files.")
+    parser.add_argument("--gt", default=config.GROUND_TRUTH_CSV,
+                        help="Ground-truth CSV path.")
     parser.add_argument(
         "--models-ini",
         default=config.MODELS_INI,
@@ -77,11 +79,13 @@ def main() -> None:
     config.GROUND_TRUTH_CSV = args.gt
     config.DATA_DIR = args.data_dir
     config._registry.read(args.models_ini)
-    config.available_models = [m for m in config._registry.sections() if "bge" not in m.lower()]
+    config.available_models = [
+        m for m in config._registry.sections() if "bge" not in m.lower()]
     config.JUDGE_MODELS = config.available_models
     config.JUDGE_MODEL = config.available_models[0] if config.available_models else "qwen2.5:7b"
 
-    judge_models = config.JUDGE_MODELS[: args.judges] if args.judges else config.JUDGE_MODELS
+    judge_models = config.JUDGE_MODELS[:
+                                       args.judges] if args.judges else config.JUDGE_MODELS
 
     print(f"Data dir : {args.data_dir}")
     print(f"GT csv   : {args.gt}")

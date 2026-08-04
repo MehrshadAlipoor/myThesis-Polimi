@@ -15,7 +15,8 @@ class AtomicStep(BaseModel):
     step_id: int
     claim: str
     category: StepCategory
-    factuality_keywords: List[str] = Field(description="Search terms to verify this claim.")
+    factuality_keywords: List[str] = Field(
+        description="Search terms to verify this claim.")
 
 
 class ReasoningQualityResponse(BaseModel):

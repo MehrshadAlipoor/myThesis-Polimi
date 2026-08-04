@@ -77,13 +77,15 @@ class MockLLMClient:
         def create(self, model: str, messages: List[dict], **kwargs):
             content = self._owner._generate_content(messages)
             return SimpleNamespace(
-                choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+                choices=[SimpleNamespace(
+                    message=SimpleNamespace(content=content))]
             )
 
         def parse(self, model: str, messages: List[dict], response_format: Any, **kwargs):
             parsed = self._owner._generate_parsed(messages, response_format)
             return SimpleNamespace(
-                choices=[SimpleNamespace(message=SimpleNamespace(parsed=parsed))]
+                choices=[SimpleNamespace(
+                    message=SimpleNamespace(parsed=parsed))]
             )
 
     class _Beta:

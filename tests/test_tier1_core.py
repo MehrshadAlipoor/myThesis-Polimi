@@ -3,6 +3,10 @@
 Uses the deterministic mock LLM client so the tests run offline.
 """
 
+from nsclc_eval.tier1_core import _extract_step_texts, calculate_res, classify_reasoning_steps, decompose_reasoning
+from nsclc_eval.testing import MockLLMClient
+from nsclc_eval.models import EfficiencyCategory, StepClassification
+from nsclc_eval import config
 import sys
 from pathlib import Path
 
@@ -11,15 +15,11 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from nsclc_eval import config
-from nsclc_eval.models import EfficiencyCategory, StepClassification
-from nsclc_eval.testing import MockLLMClient
-from nsclc_eval.tier1_core import _extract_step_texts, calculate_res, classify_reasoning_steps, decompose_reasoning
-
 
 @pytest.fixture(autouse=True)
 def offline_client():
-    config.configure(client_instance=MockLLMClient(), judge_models=["mock-judge"], seed=42, temperature=0.2)
+    config.configure(client_instance=MockLLMClient(), judge_models=[
+                     "mock-judge"], seed=42, temperature=0.2)
 
 
 def _make_assessments(categories):
@@ -86,4 +86,5 @@ def test_decompose_and_classify_with_mock():
     assert len(steps) == 3  # deterministic mock returns 3 steps
     assessments = classify_reasoning_steps(atomic)
     assert len(assessments) == 3
-    assert all(a.classification == EfficiencyCategory.REASONING for a in assessments)
+    assert all(a.classification ==
+               EfficiencyCategory.REASONING for a in assessments)

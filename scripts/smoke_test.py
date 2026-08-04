@@ -9,6 +9,10 @@ Run from the repo root:
     python scripts/smoke_test.py
 """
 
+from nsclc_eval.testing import MockLLMClient
+from nsclc_eval.pipeline import run_all_patient_evaluations
+from nsclc_eval.data_loading import load_ground_truth
+from nsclc_eval import config
 import sys
 from pathlib import Path
 
@@ -21,11 +25,6 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-from nsclc_eval import config
-from nsclc_eval.data_loading import load_ground_truth
-from nsclc_eval.pipeline import run_all_patient_evaluations
-from nsclc_eval.testing import MockLLMClient
-
 
 def main() -> None:
     config.configure(
@@ -35,7 +34,8 @@ def main() -> None:
         seed=42,
     )
 
-    gt = load_ground_truth(str(REPO_ROOT / "data/sample/sample_ground_truth.csv"))
+    gt = load_ground_truth(
+        str(REPO_ROOT / "data/sample/sample_ground_truth.csv"))
     print(f"Ground truth loaded: {len(gt)} patients")
 
     results = run_all_patient_evaluations(
@@ -61,7 +61,8 @@ def main() -> None:
         )
 
     assert len(results) > 0, "Expected at least one evaluation result"
-    assert all(r["res_score"] == 100.0 for r in results), "Mock RES should be 100"
+    assert all(r["res_score"] ==
+               100.0 for r in results), "Mock RES should be 100"
     print("\n✅ Smoke test passed.")
 
 

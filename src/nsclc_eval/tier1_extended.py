@@ -66,7 +66,8 @@ def _run_completeness_eval(
     """Run a single completeness evaluation over an 8-item clinical checklist."""
     patient_status = pipeline_data.get("patient_status", {})
     flat_ps = _flatten_patient_status(patient_status)
-    concise_patient = json.dumps(flat_ps, indent=2, default=str, ensure_ascii=False)
+    concise_patient = json.dumps(
+        flat_ps, indent=2, default=str, ensure_ascii=False)
 
     user_message = f"{text_data}\n\nPATIENT_DATA:\n{concise_patient}"
 
@@ -86,13 +87,15 @@ def _run_completeness_eval(
         n_mentioned = sum(1 for item in result.items if item.mentioned)
         completeness_score = round(n_mentioned / 8 * 100, 1)
 
-        missing = [item.checklist_item for item in result.items if not item.mentioned]
+        missing = [
+            item.checklist_item for item in result.items if not item.mentioned]
 
         result_dict = result.model_dump()
         result_dict["completeness_score"] = completeness_score
         result_dict["missing_fields"] = missing
 
-        print(f"  Completeness: {completeness_score}% ({n_mentioned}/8 items mentioned)")
+        print(
+            f"  Completeness: {completeness_score}% ({n_mentioned}/8 items mentioned)")
         if missing:
             print(f"  Missing: {missing}")
         return result_dict
@@ -124,7 +127,8 @@ def evaluate_factuality(steps: List[str], pipeline_data: Dict) -> Dict:
     """Verify the factual claims in the reasoning steps against patient data."""
     patient_status = pipeline_data.get("patient_status", {})
     flat_ps = _flatten_patient_status(patient_status)
-    concise_patient = json.dumps(flat_ps, indent=2, default=str, ensure_ascii=False)
+    concise_patient = json.dumps(
+        flat_ps, indent=2, default=str, ensure_ascii=False)
     steps_text = "\n".join(f"Step {i+1}: {s}" for i, s in enumerate(steps))
     user_message = f"PATIENT_DATA:\n{concise_patient}\n\nREASONING_STEPS:\n{steps_text}"
 
@@ -217,7 +221,8 @@ def evaluate_guideline_adherence(steps: List[str], step3_output: str) -> Dict:
         if total_steps == 0:
             return {"gar_score": 0.0, "details": []}
 
-        adherent_steps = sum(1 for step in result.steps if step.adheres_to_guideline)
+        adherent_steps = sum(
+            1 for step in result.steps if step.adheres_to_guideline)
         gar_score = round((adherent_steps / total_steps) * 100, 1)
 
         print(f"  GAR: {gar_score}% ({adherent_steps}/{total_steps})")

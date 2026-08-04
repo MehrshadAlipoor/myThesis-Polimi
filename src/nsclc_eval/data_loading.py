@@ -59,7 +59,8 @@ def _format_therapy_decision(decision: Any) -> str:
         pieces.append(f"drugs: {drug_text}")
 
     reason_text = _normalize_text_value(
-        decision.get("reason") or decision.get("rationale") or decision.get("confidence_explanation")
+        decision.get("reason") or decision.get(
+            "rationale") or decision.get("confidence_explanation")
     )
     if reason_text:
         pieces.append(f"reason: {reason_text}")
@@ -109,14 +110,17 @@ def load_patient_record(json_file_path: str) -> PatientRecord:
         or "Not found"
     )
     orchestration_model_name = (
-        data.get("config", {}).get("steps", {}).get("step5_decision", {}).get("model") or "Not found"
+        data.get("config", {}).get("steps", {}).get(
+            "step5_decision", {}).get("model") or "Not found"
     )
 
-    raw_reasoning = _normalize_text_value(pipeline_data.get("therapy_decision", {}).get("reasoning_steps"))
+    raw_reasoning = _normalize_text_value(pipeline_data.get(
+        "therapy_decision", {}).get("reasoning_steps"))
     if not raw_reasoning:
         step5_logs = pipeline_data.get("step5_logs", [{}])
         if step5_logs and isinstance(step5_logs[0], dict):
-            raw_reasoning = _normalize_text_value(step5_logs[0].get("reasoning"))
+            raw_reasoning = _normalize_text_value(
+                step5_logs[0].get("reasoning"))
 
     final_decision = _extract_structured_final_decision(data)
 
@@ -144,7 +148,8 @@ def load_ground_truth(gt_csv_path: str) -> Dict[str, Any]:
 
     The CSV is semicolon-delimited and keyed by the ``Subject`` column.
     """
-    gt_df = pd.read_csv(gt_csv_path, sep=";", engine="python", on_bad_lines="skip")
+    gt_df = pd.read_csv(gt_csv_path, sep=";",
+                        engine="python", on_bad_lines="skip")
     gt_mapping = {}
     for _, row in gt_df.iterrows():
         subject_id = str(row["Subject"]).strip()

@@ -38,7 +38,8 @@ def evaluate_agent(file_path, ground_truth_rubric):
 
     # MATH: Efficiency %
     total_steps = len(reasoning_data.steps)
-    reasoning_steps = [s for s in reasoning_data.steps if s.category == StepCategory.REASONING]
+    reasoning_steps = [
+        s for s in reasoning_data.steps if s.category == StepCategory.REASONING]
     efficiency = (len(reasoning_steps) / total_steps) * 100
 
     print("--- 🛡️ PHASE 2: Safety & Effectiveness ---")

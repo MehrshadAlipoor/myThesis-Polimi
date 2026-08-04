@@ -72,7 +72,8 @@ def save_evaluation_results(
 ) -> str:
     """Persist a single patient evaluation result to ``eval/<date>/<time>/<judge>/``."""
     orchestration_model_name = orchestrator_model or "unknown_orchestrator"
-    dir_path = _get_run_output_dir(run_date, run_timestamp, judge_model=judge_model)
+    dir_path = _get_run_output_dir(
+        run_date, run_timestamp, judge_model=judge_model)
     os.makedirs(dir_path, exist_ok=True)
     file_path = f"{dir_path}/{patient_id}_evaluation_{_sanitize_filename(orchestration_model_name)}.json"
     with open(file_path, "w", encoding="utf-8") as f:

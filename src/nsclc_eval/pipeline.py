@@ -92,7 +92,8 @@ def _build_evaluation_payload(
         atomic_steps = decompose_reasoning(raw_reasoning)
         assessments = classify_reasoning_steps(atomic_steps)
         steps = _extract_step_texts(atomic_steps)
-        res_score, reasoning_count, citation_count, total_steps, category_stats = calculate_res(assessments)
+        res_score, reasoning_count, citation_count, total_steps, category_stats = calculate_res(
+            assessments)
     else:
         if any(
             eval_flags.get(f)
@@ -113,16 +114,21 @@ def _build_evaluation_payload(
         if pipeline_data and steps:
             print("\n--- Tier 1 Extended Metrics ---")
             if eval_flags.get("tier1_guideline_adherence") and step3_output:
-                f_gar = executor.submit(evaluate_guideline_adherence, steps, step3_output)
+                f_gar = executor.submit(
+                    evaluate_guideline_adherence, steps, step3_output)
             if eval_flags.get("tier1_reasoning_completeness"):
-                f_comp = executor.submit(evaluate_reasoning_completeness_llm, steps, pipeline_data)
+                f_comp = executor.submit(
+                    evaluate_reasoning_completeness_llm, steps, pipeline_data)
             if eval_flags.get("tier1_factuality"):
-                f_fact = executor.submit(evaluate_factuality, steps, pipeline_data)
+                f_fact = executor.submit(
+                    evaluate_factuality, steps, pipeline_data)
             if eval_flags.get("tier1_faithfulness"):
-                f_faith = executor.submit(evaluate_faithfulness, steps, raw_decision)
+                f_faith = executor.submit(
+                    evaluate_faithfulness, steps, raw_decision)
 
         if eval_flags.get("tier2_treatment_completeness") and step5_output:
-            f_treat_comp = executor.submit(evaluate_treatment_plan_completeness, step5_output, pipeline_data)
+            f_treat_comp = executor.submit(
+                evaluate_treatment_plan_completeness, step5_output, pipeline_data)
 
         if eval_flags.get("tier2_binary_accuracy"):
             def do_tier2():
@@ -154,7 +160,8 @@ def _build_evaluation_payload(
         "evaluation_settings": {
             "evaluation_date": datetime.now().isoformat(),
             "evaluation_duration_min": (
-                (datetime.now() - run_started_at).total_seconds() / 60 if run_started_at else None
+                (datetime.now() - run_started_at).total_seconds() /
+                60 if run_started_at else None
             ),
             "patient_processing_time_sec": duration_sec,
             "mode": mode,
@@ -227,7 +234,8 @@ def _evaluate_file_by_mode(
     judge_model: Optional[str] = None,
     eval_flags: Optional[Dict] = None,
 ) -> Optional[Dict]:
-    patient_record, model_decision, pipeline_data = load_patient_data(file_path)
+    patient_record, model_decision, pipeline_data = load_patient_data(
+        file_path)
     ground_truth_value = gt_mapping.get(str(patient_record.i3lung_id).strip())
     if ground_truth_value is None:
         return None
@@ -300,7 +308,8 @@ def _evaluate_file_by_mode(
         "binary_accuracy": binary_accuracy,
         "accuracy_result": accuracy_result,
         "reasoning_completeness_score": (
-            completeness_result.get("completeness_score", 0) if completeness_result else None
+            completeness_result.get(
+                "completeness_score", 0) if completeness_result else None
         ),
         "treatment_completeness_score": (
             treatment_completeness.get("completeness_score", 0)
@@ -309,7 +318,8 @@ def _evaluate_file_by_mode(
         ),
         "factuality_score": factuality_result.get("factuality_score", 0) if factuality_result else None,
         "faithfulness_score": (
-            faithfulness_result.get("faithfulness_score", 0) if faithfulness_result else None
+            faithfulness_result.get(
+                "faithfulness_score", 0) if faithfulness_result else None
         ),
         "source_file": file_path,
         "saved_path": saved_path,
@@ -344,8 +354,10 @@ def run_evaluation(
     def process_file(idx: int, file_path: str):
         try:
             if verbose:
-                print(f"\nEvaluating file #{idx}/{len(file_paths)} from {file_path}")
-                print(f"  Judge: {active_judge_model} | Orchestrator: {active_orch_model}\n")
+                print(
+                    f"\nEvaluating file #{idx}/{len(file_paths)} from {file_path}")
+                print(
+                    f"  Judge: {active_judge_model} | Orchestrator: {active_orch_model}\n")
             result = _evaluate_file_by_mode(
                 file_path,
                 gt_mapping,
@@ -378,7 +390,7 @@ def run_evaluation(
 
     # max_workers=1 prevents patient logs from interleaving
     with ThreadPoolExecutor(max_workers=1) as executor:
-        futures = {executor.submit(process_file, idx, fp): fp for idx, fp in enumerate(file_paths, 1)}
+        futures = {executor.submit(process_file, idx, fp)                   : fp for idx, fp in enumerate(file_paths, 1)}
         for future in as_completed(futures):
             res = future.result()
             if res is None:
@@ -402,7 +414,8 @@ def run_evaluation(
 
     if verbose:
         print(f"\n{'='*60}")
-        print(f"Batch Summary: Judge={active_judge_model} | Orch={active_orch_model}")
+        print(
+            f"Batch Summary: Judge={active_judge_model} | Orch={active_orch_model}")
         print(f"{'='*60}")
         for res in results_summary:
             print(
@@ -412,13 +425,15 @@ def run_evaluation(
                 f"Fact: {res.get('factuality_score', 'N/A')} | Faith: {res.get('faithfulness_score', 'N/A')}"
             )
         if results_summary:
-            _f = lambda v: f"{v:.1f}" if v is not None else "N/A"
+            def _f(v): return f"{v:.1f}" if v is not None else "N/A"
             print(
                 f"\nAverages: RES={_f(avg_res)}% | Acc={_f(avg_acc)} | "
                 f"GAR={_f(avg_gar)}% | Reasoning Compl={_f(avg_reasoning_comp)}% | Treatment Compl={_f(avg_treatment_comp)}% | Fact={_f(avg_fact)}% | Faith={_f(avg_faith)}"
             )
-        print(f"Evaluated: {len(results_summary)} | Failed: {len(error_records)}")
-        print(f"Duration: {(datetime.now() - run_started_at).total_seconds() / 60:.2f} min")
+        print(
+            f"Evaluated: {len(results_summary)} | Failed: {len(error_records)}")
+        print(
+            f"Duration: {(datetime.now() - run_started_at).total_seconds() / 60:.2f} min")
 
     summary_data = {
         "evaluation_date": datetime.now().isoformat(),
@@ -440,7 +455,8 @@ def run_evaluation(
     }
 
     if save_results:
-        output_dir = _get_run_output_dir(run_date, run_timestamp, judge_model=active_judge_model)
+        output_dir = _get_run_output_dir(
+            run_date, run_timestamp, judge_model=active_judge_model)
         sanitized_orch = _sanitize_filename(active_orch_model)
         sanitized_judge = _sanitize_filename(active_judge_model)
         if summary_log_path is None:
@@ -511,7 +527,8 @@ def run_all_patient_evaluations(
             batch_num += 1
             if verbose:
                 print(f"\n{'='*70}")
-                print(f"BATCH {batch_num}/{total_batches}: Judge={judge_model} | Orch={orch_model}")
+                print(
+                    f"BATCH {batch_num}/{total_batches}: Judge={judge_model} | Orch={orch_model}")
                 print(f"Patients in batch: {len(batch_files)}")
                 print(f"{'='*70}")
 
@@ -534,6 +551,7 @@ def run_all_patient_evaluations(
     if verbose:
         print(f"\n{'='*70}")
         print(f"ALL DONE. Total evaluations: {len(all_results)}")
-        print(f"Total time elapsed: {(time.time() - t_all_start)/60:.2f} minutes")
+        print(
+            f"Total time elapsed: {(time.time() - t_all_start)/60:.2f} minutes")
         print(f"{'='*70}")
     return all_results

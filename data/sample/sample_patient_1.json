@@ -1,67 +1,89 @@
 {
-  "config": {
-    "steps": {
-      "step5_decision": {
-        "model": "gpt-oss-20b"
-      }
+    "config": {
+        "steps": {
+            "step5_decision": {
+                "model": "gpt-oss-20b"
+            }
+        }
+    },
+    "pipeline_data": {
+        "patient_id": "SYNTH-001",
+        "patient_status": {
+            "i3lung_id": "SYNTH001",
+            "histology": "Adenocarcinoma",
+            "grade": "G3",
+            "stage": "IV",
+            "pdl1_tps": "60%",
+            "ecog_ps": 1,
+            "smoking_status": "Former smoker",
+            "biomarkers": {
+                "EGFR": "Wild-type",
+                "ALK": "Wild-type",
+                "ROS1": "Wild-type",
+                "BRAF": "Wild-type",
+                "KRAS": "G12C"
+            },
+            "metastatic_sites": [
+                "Brain",
+                "Bone",
+                "Adrenal",
+                "Pulmonary"
+            ],
+            "comorbidities": [
+                "Asthma",
+                "Hypertension"
+            ],
+            "contraindications": {
+                "autoimmune_disease": "None",
+                "interstitial_lung_disease": "None",
+                "corticosteroids": "None"
+            },
+            "data_quality": "high"
+        },
+        "therapy_decision": {
+            "reasoning_steps": "The patient is a 62-year-old former smoker with stage IV lung adenocarcinoma. The tumour is PD-L1 60% positive, EGFR/ALK/ROS1/BRAF wild-type and KRAS G12C mutated. Metastases are present in brain, bone, adrenal and lung. Because PD-L1 is high and there is no contraindication to immunotherapy, first-line pembrolizumab monotherapy is an appropriate guideline-aligned option, and the patient's performance status supports it.",
+            "best_therapy_overall": {
+                "therapy_class": "IOCT",
+                "exact_drugs": [
+                    "Carboplatin",
+                    "Pemetrexed",
+                    "Pembrolizumab"
+                ],
+                "reason": "High disease burden with multiple metastatic sites warrants chemo-immunotherapy for rapid cytoreduction.",
+                "confidence": "0.85",
+                "sources": [
+                    "ESMO 2024",
+                    "KEYNOTE-189"
+                ]
+            },
+            "best_therapy_reimbursed": {
+                "therapy_class": "IOCT",
+                "exact_drugs": [
+                    "Carboplatin",
+                    "Pemetrexed",
+                    "Pembrolizumab"
+                ],
+                "reason": "Reimbursed triplet chemo-IO regimen for metastatic non-squamous NSCLC.",
+                "confidence": "0.85",
+                "sources": [
+                    "KEYNOTE-189",
+                    "AIFA"
+                ]
+            },
+            "raw_decision": "Recommended first-line therapy: Carboplatin + Pemetrexed + Pembrolizumab (triplet chemo-immunotherapy)."
+        },
+        "step5_logs": [
+            {
+                "output": "TREATMENT PLAN: Triplet chemo-immunotherapy with Carboplatin AUC 5, Pemetrexed 500 mg/m2 and Pembrolizumab 200 mg, every 21 days for 4 cycles, followed by maintenance pembrolizumab + pemetrexed. Consider SRS for brain lesions and zoledronate for bone disease.",
+                "reasoning": "Guideline-aligned triplet chemo-IO selected given PD-L1 60%, extensive metastatic burden and no contraindications."
+            }
+        ],
+        "raw_messages": [
+            {
+                "type": "tool",
+                "name": "retrieve_medical_documents",
+                "content": "First-line treatment for patients with advanced NSCLC with PS 0-1, tumour PD-L1 >= 50% and without contraindication for ICI: Pembrolizumab is considered a standard first-line option [I, A; ESMO-MCBS v1.1 score: 5]. Chemo + ICI is an option for patients with a need for fast tumour load reduction [IV, B]."
+            }
+        ]
     }
-  },
-  "pipeline_data": {
-    "patient_id": "SYNTH-001",
-    "patient_status": {
-      "i3lung_id": "SYNTH001",
-      "histology": "Adenocarcinoma",
-      "grade": "G3",
-      "stage": "IV",
-      "pdl1_tps": "60%",
-      "ecog_ps": 1,
-      "smoking_status": "Former smoker",
-      "biomarkers": {
-        "EGFR": "Wild-type",
-        "ALK": "Wild-type",
-        "ROS1": "Wild-type",
-        "BRAF": "Wild-type",
-        "KRAS": "G12C"
-      },
-      "metastatic_sites": ["Brain", "Bone", "Adrenal", "Pulmonary"],
-      "comorbidities": ["Asthma", "Hypertension"],
-      "contraindications": {
-        "autoimmune_disease": "None",
-        "interstitial_lung_disease": "None",
-        "corticosteroids": "None"
-      },
-      "data_quality": "high"
-    },
-    "therapy_decision": {
-      "reasoning_steps": "The patient is a 62-year-old former smoker with stage IV lung adenocarcinoma. The tumour is PD-L1 60% positive, EGFR/ALK/ROS1/BRAF wild-type and KRAS G12C mutated. Metastases are present in brain, bone, adrenal and lung. Because PD-L1 is high and there is no contraindication to immunotherapy, first-line pembrolizumab monotherapy is an appropriate guideline-aligned option, and the patient's performance status supports it.",
-      "best_therapy_overall": {
-        "therapy_class": "IOCT",
-        "exact_drugs": ["Carboplatin", "Pemetrexed", "Pembrolizumab"],
-        "reason": "High disease burden with multiple metastatic sites warrants chemo-immunotherapy for rapid cytoreduction.",
-        "confidence": "0.85",
-        "sources": ["ESMO 2024", "KEYNOTE-189"]
-      },
-      "best_therapy_reimbursed": {
-        "therapy_class": "IOCT",
-        "exact_drugs": ["Carboplatin", "Pemetrexed", "Pembrolizumab"],
-        "reason": "Reimbursed triplet chemo-IO regimen for metastatic non-squamous NSCLC.",
-        "confidence": "0.85",
-        "sources": ["KEYNOTE-189", "AIFA"]
-      },
-      "raw_decision": "Recommended first-line therapy: Carboplatin + Pemetrexed + Pembrolizumab (triplet chemo-immunotherapy)."
-    },
-    "step5_logs": [
-      {
-        "output": "TREATMENT PLAN: Triplet chemo-immunotherapy with Carboplatin AUC 5, Pemetrexed 500 mg/m2 and Pembrolizumab 200 mg, every 21 days for 4 cycles, followed by maintenance pembrolizumab + pemetrexed. Consider SRS for brain lesions and zoledronate for bone disease.",
-        "reasoning": "Guideline-aligned triplet chemo-IO selected given PD-L1 60%, extensive metastatic burden and no contraindications."
-      }
-    ],
-    "raw_messages": [
-      {
-        "type": "tool",
-        "name": "retrieve_medical_documents",
-        "content": "First-line treatment for patients with advanced NSCLC with PS 0-1, tumour PD-L1 >= 50% and without contraindication for ICI: Pembrolizumab is considered a standard first-line option [I, A; ESMO-MCBS v1.1 score: 5]. Chemo + ICI is an option for patients with a need for fast tumour load reduction [IV, B]."
-      }
-    ]
-  }
 }

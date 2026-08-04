@@ -52,7 +52,8 @@ def evaluate_clinical_effectiveness(
         else 0
     )
     accuracy_result = "Correct" if binary_accuracy == 1 else "Wrong"
-    print(f"  Predicted: {predicted_label} => {extracted_therapy.category.value}")
+    print(
+        f"  Predicted: {predicted_label} => {extracted_therapy.category.value}")
     print(f"  Ground Truth: {ground_truth_value} => {ground_truth_label}")
     print(f"  Binary Accuracy: {binary_accuracy} ({accuracy_result})")
     return binary_accuracy, accuracy_result, predicted_label, ground_truth_label
