@@ -1,0 +1,94 @@
+# ============================================================
+# PRIVACY & DATA PROTECTION
+# ============================================================
+# Real patient data must NEVER be committed to this repository.
+# Only the synthetic demo data under data/sample/ is allowed.
+
+# Raw patient clinical data & evaluation outputs
+data/*
+!data/sample/
+!data/sample/**
+data/**/*
+!data/sample/**
+data/260525/
+data/260529/
+data/ds_test/
+data/export/
+data/Updated_ds/
+
+eval/
+results/*.xlsx
+results/260609*
+2026-*/
+175-*
+
+# Data formats that may contain patient-level records
+*.csv
+!data/sample/*.csv
+*.xlsx
+*.xls
+*.tsv
+
+# Model weights (too large for git, typically downloaded)
+*.gguf
+*.bin
+*.safetensors
+
+# ============================================================
+# PYTHON
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================================
+# NOTEBOOKS & VIRTUAL ENVS
+# ============================================================
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.pytype_cache/
+
+# ============================================================
+# IDE / OS
+# ============================================================
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# LOGS & TEMP
+# ============================================================
+*.log
+tmp/
+temp/
+scratch_*.py
+temp_*.py
