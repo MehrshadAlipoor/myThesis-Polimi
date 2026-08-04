@@ -5,11 +5,11 @@
 # Only the synthetic demo data under data/sample/ is allowed.
 
 # Raw patient clinical data & evaluation outputs
+# NOTE: keep the sample whitelist LAST so it wins over data/*
 data/*
 !data/sample/
 !data/sample/**
-data/**/*
-!data/sample/**
+# Real-data subfolders (already covered by data/*, listed for clarity)
 data/260525/
 data/260529/
 data/ds_test/

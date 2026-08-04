@@ -1,0 +1,67 @@
+{
+  "config": {
+    "steps": {
+      "step5_decision": {
+        "model": "baichuan-m2-32b"
+      }
+    }
+  },
+  "pipeline_data": {
+    "patient_id": "SYNTH-002",
+    "patient_status": {
+      "i3lung_id": "SYNTH002",
+      "histology": "Squamous cell carcinoma",
+      "grade": "G2",
+      "stage": "IV",
+      "pdl1_tps": "15%",
+      "ecog_ps": 0,
+      "smoking_status": "Current smoker",
+      "biomarkers": {
+        "EGFR": "Wild-type",
+        "ALK": "Wild-type",
+        "ROS1": "Wild-type",
+        "BRAF": "Wild-type",
+        "KRAS": "Wild-type"
+      },
+      "metastatic_sites": ["Liver", "Lung"],
+      "comorbidities": ["COPD"],
+      "contraindications": {
+        "autoimmune_disease": "None",
+        "interstitial_lung_disease": "None",
+        "corticosteroids": "None"
+      },
+      "data_quality": "medium"
+    },
+    "therapy_decision": {
+      "reasoning_steps": "A 58-year-old current smoker with stage IV squamous NSCLC, PD-L1 15%, no actionable driver mutations and liver metastases. Since PD-L1 is low, immunotherapy alone is not recommended; first-line chemotherapy plus immunotherapy is preferred.",
+      "best_therapy_overall": {
+        "therapy_class": "IOCT",
+        "exact_drugs": ["Carboplatin", "Paclitaxel", "Pembrolizumab"],
+        "reason": "Low PD-L1 with squamous histology and current smoking favour chemo-immunotherapy.",
+        "confidence": "0.78",
+        "sources": ["KEYNOTE-407"]
+      },
+      "best_therapy_reimbursed": {
+        "therapy_class": "IOCT",
+        "exact_drugs": ["Carboplatin", "Paclitaxel", "Pembrolizumab"],
+        "reason": "Reimbursed first-line regimen for metastatic squamous NSCLC.",
+        "confidence": "0.78",
+        "sources": ["KEYNOTE-407", "AIFA"]
+      },
+      "raw_decision": "Recommended first-line therapy: Carboplatin + Paclitaxel + Pembrolizumab (chemo-immunotherapy)."
+    },
+    "step5_logs": [
+      {
+        "output": "TREATMENT PLAN: Carboplatin AUC 5 + Paclitaxel 200 mg/m2 + Pembrolizumab 200 mg every 3 weeks for 4 cycles, then maintenance pembrolizumab. Palliative RT to symptomatic liver lesion on demand.",
+        "reasoning": "Chemo-immunotherapy selected for low PD-L1 squamous NSCLC per KEYNOTE-407."
+      }
+    ],
+    "raw_messages": [
+      {
+        "type": "tool",
+        "name": "retrieve_medical_documents",
+        "content": "First-line treatment for patients with advanced NSCLC with contraindication for ICI and PS 0-2: ChT with platinum doublets should be considered in all patients without major comorbidities and PS 0-2 [I, A]. Pembrolizumab combined with chemotherapy is standard for PD-L1 positive squamous NSCLC [I, A]."
+      }
+    ]
+  }
+}
