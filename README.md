@@ -91,8 +91,8 @@ schema hallucinations.
 ### 1. Install
 
 ```bash
-git clone https://github.com/MehrshadAlipoor/myThesis.git
-cd myThesis
+git clone https://github.com/MehrshadAlipoor/myThesis-Polimi.git
+cd myThesis-Polimi
 pip install -e .            # or: pip install -r requirements.txt
 ```
 
