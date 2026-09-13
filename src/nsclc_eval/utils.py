@@ -9,6 +9,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from . import config
 
+# Optional subfolder appended under ``eval/<date>/<time>/<judge>/``. The
+# sensitivity runner sets this to ``sensitivity/v{k}`` for one run.
+OUTPUT_SUBDIR = ""
+
 
 def _sanitize_filename(value: Any) -> str:
     """Replace characters that are invalid on common filesystems."""
@@ -26,6 +30,18 @@ def _sanitize_filename(value: Any) -> str:
     )
 
 
+def _orchestrator_from_filename(fname: str, known_orchestrators: List[str]) -> Optional[str]:
+    """Infer the orchestrator model from the ``<id>_<model>_<uuid>_v0.json`` name."""
+    stem = os.path.splitext(fname)[0]
+    parts = stem.split("_")
+    if len(parts) >= 2:
+        cand = parts[1].strip().lower()
+        for k in known_orchestrators:
+            if k.lower() == cand:
+                return k
+    return None
+
+
 def _get_orchestrator_model_from_file(json_file_path: str) -> str:
     """Read the orchestrator model name embedded in a patient JSON."""
     with open(json_file_path, "r", encoding="utf-8") as f:
@@ -33,15 +49,24 @@ def _get_orchestrator_model_from_file(json_file_path: str) -> str:
     return data.get("config", {}).get("steps", {}).get("step5_decision", {}).get("model", "Unknown")
 
 
-def build_file_index(data_dir: str) -> Tuple[Dict[str, List[str]], List[str]]:
-    """Index patient JSON files grouped by orchestrator model."""
-    orch_to_files = defaultdict(list)
+def build_file_index(data_dir: str,
+                     known_orchestrators: Optional[List[str]] = None
+                     ) -> Tuple[Dict[str, List[str]], List[str]]:
+    """Index patient JSON files grouped by orchestrator model.
+
+    The orchestrator is inferred from the filename pattern first (no full-JSON
+    reads at startup); the JSON is only read when the name is ambiguous.
+    """
+    known = known_orchestrators or config.available_models
+    orch_to_files: Dict[str, List[str]] = defaultdict(list)
     for root, _, files in os.walk(data_dir):
         for fname in sorted(files):
             if not fname.endswith(".json"):
                 continue
             fpath = os.path.join(root, fname)
-            orch_model = _get_orchestrator_model_from_file(fpath)
+            orch_model = _orchestrator_from_filename(fname, known)
+            if orch_model is None:
+                orch_model = _get_orchestrator_model_from_file(fpath)
             orch_to_files[orch_model].append(fpath)
     orchestrators = sorted(orch_to_files.keys())
     print(
@@ -53,7 +78,8 @@ def build_file_index(data_dir: str) -> Tuple[Dict[str, List[str]], List[str]]:
 
 def _get_run_output_dir(run_date: str, run_timestamp: str, judge_model: Optional[str] = None) -> str:
     active_judge_model = judge_model or config.JUDGE_MODEL
-    return f"eval/{run_date}/{run_timestamp}/{_sanitize_filename(active_judge_model)}"
+    base = f"eval/{run_date}/{run_timestamp}/{_sanitize_filename(active_judge_model)}"
+    return f"{base}/{OUTPUT_SUBDIR}" if OUTPUT_SUBDIR else base
 
 
 def _write_error_log(error_log_path: str, error_records: List[Dict]) -> None:

@@ -9,12 +9,13 @@ Run from the repo root:
     python scripts/smoke_test.py
 """
 
-from nsclc_eval.testing import MockLLMClient
-from nsclc_eval.pipeline import run_all_patient_evaluations
-from nsclc_eval.data_loading import load_ground_truth
-from nsclc_eval import config
 import sys
 from pathlib import Path
+
+from nsclc_eval import config
+from nsclc_eval.data_loading import load_ground_truth
+from nsclc_eval.pipeline import run_all_patient_evaluations
+from nsclc_eval.testing import MockLLMClient
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
@@ -55,14 +56,15 @@ def main() -> None:
     for r in results:
         print(
             f"  {r['patient_id']}: RES={r['res_score']} Acc={r['binary_accuracy']} "
-            f"GAR={r['gar_score']} RC={r['reasoning_completeness_score']} "
+            f"GAR={r['gar_score']} [{r['gar_status']}] "
+            f"RC={r['reasoning_completeness_score']} "
             f"TC={r['treatment_completeness_score']} Fact={r['factuality_score']} "
-            f"Faith={r['faithfulness_score']}"
+            f"Faith={r['faithfulness_score']} OutFact={r['output_factuality_score']}"
         )
 
     assert len(results) > 0, "Expected at least one evaluation result"
-    assert all(r["res_score"] ==
-               100.0 for r in results), "Mock RES should be 100"
+    assert all(r["res_score"] == 100.0 for r in results), "Mock RES should be 100"
+    assert all(r["output_factuality_score"] == 100.0 for r in results)
     print("\n✅ Smoke test passed.")
 
 

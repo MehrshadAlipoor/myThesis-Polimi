@@ -3,14 +3,20 @@
 Uses the deterministic mock LLM client so the tests run offline.
 """
 
-from nsclc_eval.tier1_core import _extract_step_texts, calculate_res, classify_reasoning_steps, decompose_reasoning
-from nsclc_eval.testing import MockLLMClient
-from nsclc_eval.models import EfficiencyCategory, StepClassification
-from nsclc_eval import config
 import sys
 from pathlib import Path
 
 import pytest
+
+from nsclc_eval import config
+from nsclc_eval.models import EfficiencyCategory, StepClassification
+from nsclc_eval.testing import MockLLMClient
+from nsclc_eval.tier1_core import (
+    _extract_step_texts,
+    calculate_res,
+    classify_reasoning_steps,
+    decompose_reasoning,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
@@ -26,8 +32,6 @@ def _make_assessments(categories):
     return [
         StepClassification(
             step_id=i,
-            original_text=f"step {i}",
-            claim=f"claim {i}",
             classification=cat,
             rationale="test",
         )
@@ -36,9 +40,7 @@ def _make_assessments(categories):
 
 
 def test_calculate_res_all_reasoning():
-    assessments = _make_assessments(
-        [EfficiencyCategory.REASONING] * 4
-    )
+    assessments = _make_assessments([EfficiencyCategory.REASONING] * 4)
     res, reasoning, citation, total, stats = calculate_res(assessments)
     assert res == 100.0
     assert reasoning == 4
@@ -86,5 +88,11 @@ def test_decompose_and_classify_with_mock():
     assert len(steps) == 3  # deterministic mock returns 3 steps
     assessments = classify_reasoning_steps(atomic)
     assert len(assessments) == 3
-    assert all(a.classification ==
-               EfficiencyCategory.REASONING for a in assessments)
+    assert all(a.classification == EfficiencyCategory.REASONING for a in assessments)
+
+
+def test_classify_pads_missing_steps():
+    # Mock returns one entry per input <Step N>, so all steps are covered.
+    blob = "<Step 1> a\n<Step 2> b\n<Step 3> c\n<Step 4> d"
+    assessments = classify_reasoning_steps(blob, steps=["a", "b", "c", "d"])
+    assert [a.step_id for a in assessments] == [1, 2, 3, 4]

@@ -29,16 +29,29 @@ rigidity, and cross-model consistency.
 │  ├─ for each judge × orchestrator pair:                              │
 │  │   └─ restart llama-cpp-server Docker (VRAM flush on judge swap)   │
 │  └─ run_evaluation() for each patient file:                          │
-│      ├─ TIER 1 CORE   : decompose → classify steps → RES             │
+│      ├─ TIER 1 CORE   : resolve steps → classify (1 batched call) →  │
+│      │                  RES                                          │
 │      └─ (parallel) TIER 1 EXTENDED + TIER 2:                         │
 │          ├─ Reasoning Completeness      (LLM, 8-item checklist)      │
 │          ├─ Guideline Adherence (GAR)   (LLM, ESMO/ASCO guidelines)  │
 │          ├─ Factuality                  (LLM, claim verification)    │
 │          ├─ Faithfulness                (LLM, Likert 1-5)            │
 │          ├─ Treatment Plan Completeness (LLM, 8-item checklist)      │
+│          ├─ Output Factuality           (LLM, claim verification)    │
 │          └─ Binary Clinical Accuracy    (LLM, IO vs IOCT)            │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+**Speed edition.** Judge generation is bounded three ways: per-metric
+`max_tokens` caps, a per-request `thinking_budget_tokens` cap for the
+thinking judges (CoT stays ON, just bounded), and a pinned server config
+(`-ngl 999`, `--ubatch-size 512`, KV cache `q8_0`, `--cache-prompt`). The
+sensitivity runner additionally reuses v0's prompt-invariant metrics in v1/v2.
+
+**Prompt sensitivity.** `nsclc_eval.sensitivity` runs the three critical judge
+prompts (classification, factuality, faithfulness) under three semantically
+equivalent variants and reports **PSS** (per-patient score spread) and **JSS**
+(agreement across variants).
 
 ## Evaluation Tiers
 
@@ -51,6 +64,7 @@ rigidity, and cross-model consistency.
 | **1 Ext** | Guideline Adherence (GAR) | LLM | Checks each reasoning step against retrieved ESMO/ASCO guidelines |
 | **2** | Binary Clinical Accuracy | LLM | Predicts IO vs IOCT and compares with the clinical ground truth |
 | **2** | Treatment Plan Completeness | LLM | Same 8-item checklist applied to the final treatment plan |
+| **2** | Output Factuality | LLM | Claim verification over the agent's final output (not step-decomposed) |
 
 Structured LLM outputs are parsed with **Pydantic** models whose
 `model_validator(mode='before')` hooks remap the alternative field names that
@@ -62,13 +76,15 @@ schema hallucinations.
 ```
 .
 ├── src/nsclc_eval/            # The evaluation package
-│   ├── config.py              # Client, model registry, Docker VRAM management
+│   ├── config.py              # Client, model registry, speed settings, Docker VRAM
+│   ├── llm.py                 # Bounded-concurrency LLM calls + thinking budget
 │   ├── models.py              # Pydantic models (with field-name remapping)
-│   ├── prompts.py             # All 8 prompt templates
-│   ├── data_loading.py        # Patient JSON parsing + ground truth
-│   ├── tier1_core.py          # RES decomposition & classification
+│   ├── prompts.py             # Prompt templates + sensitivity override hook
+│   ├── data_loading.py        # Patient JSON parsing, ground truth, guideline GT
+│   ├── tier1_core.py          # RES — batched step classification
 │   ├── tier1_extended.py      # Completeness, Factuality, Faithfulness, GAR
-│   ├── tier2_clinical.py      # Binary accuracy + treatment completeness
+│   ├── tier2_clinical.py      # Binary accuracy
+│   ├── sensitivity.py         # Prompt variants, PSS/JSS, invariant caching
 │   ├── utils.py               # File indexing & result persistence
 │   ├── pipeline.py            # Orchestration (single / full matrix runs)
 │   ├── cli.py                 # Command-line entry point
@@ -128,6 +144,22 @@ Open `notebooks/post_run_analysis.ipynb` and set `EVAL_SESSION_PATH` to the
 `eval/<date>/<time>` directory. The notebook produces the pair-wise metric
 matrix, judge-consistency bar charts, RES distributions, confusion matrices,
 Precision/Recall/F1, ROC curves, radar charts and a consensus leaderboard.
+
+### 5. Prompt sensitivity
+
+Run the paraphrased-prompt experiment (PSS/JSS) directly from the CLI:
+
+```bash
+python -m nsclc_eval.cli --sensitivity \
+    --data-dir data/your_patients --gt data/your_ground_truth.csv \
+    --sensitivity-orchestrator baichuan-m2-32b --sensitivity-patients 20
+```
+
+Per-patient JSONs and summaries are written under
+`eval/<date>/<time>/<judge>/sensitivity/v{k}/`, plus a flat
+`sensitivity_records.csv`. v1/v2 reuse v0's prompt-invariant metrics
+(completeness, GAR, treatment completeness, output factuality, binary accuracy);
+pass `--no-reuse-invariant` to run the complete pipeline for every variant.
 
 ## Privacy & Data Handling
 

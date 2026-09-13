@@ -3,13 +3,17 @@
 Each prompt is used with a different LLM-as-a-Judge metric:
 
 * ``REFORMAT_PROMPT`` — decomposes raw agent reasoning into atomic steps.
-* ``REASONING_PROMPT`` — classifies a step as Citation/Repetition/Reasoning/Redundancy (RES).
-* ``TREATMENT_EXTRACTION_PROMPT`` — extracts the binary IO vs IOCT treatment class (Tier 2).
+* ``BATCHED_CLASSIFICATION_PROMPT`` — classifies **all** steps at once (RES).
+* ``TREATMENT_EXTRACTION_PROMPT`` — extracts the binary IO vs IOCT class (Tier 2).
 * ``FACTUALITY_PROMPT`` — verifies factual claims against the patient record.
+* ``OUTPUT_FACTUALITY_PROMPT`` — same audit over the final treatment output.
 * ``FAITHFULNESS_PROMPT`` — checks internal consistency of the reasoning chain.
 * ``REASONING_COMPLETENESS_PROMPT`` — 8-item clinical checklist over reasoning steps.
 * ``TREATMENT_PLAN_COMPLETENESS_PROMPT`` — 8-item clinical checklist over the treatment plan.
 * ``GUIDELINE_ADHERENCE_PROMPT`` — checks each step against retrieved ESMO/ASCO guidelines (GAR).
+
+The ``ACTIVE_PROMPTS`` / ``P()`` hook lets the prompt-sensitivity runner inject
+paraphrased variants (v1/v2) without touching the metric code.
 """
 
 REFORMAT_PROMPT = """
@@ -42,43 +46,34 @@ Below is the text that needs to be reorganized into reasoning steps:
 [Text to be Organized]
 """
 
-REASONING_PROMPT = """
+BATCHED_CLASSIFICATION_PROMPT = """
 # Task Description
-Analyze the current thinking step and classify it into:
+You will receive a numbered list of reasoning steps produced by a clinical AI agent for NSCLC therapy selection.
+Classify EVERY step into exactly one of:
 1. Citation: Restatement of record info without new reasoning.
 2. Repetition: Repetition of previous steps without advancing process.
 3. Reasoning: Deriving new conclusions that move toward the correct answer.
 4. Redundancy: New info that does not help reach the final answer.
 
 # Note
-When determining the type, ensure to fully consider the logical relationship and reasoning process between the current thinking step, previous thinking steps, the patient's medical record, and the reasoning goal. If the current thinking step corresponds to multiple types, select the most appropriate one based on its contribution to the reasoning goal. Maintain objectivity and accuracy in judgment, avoiding subjective assumptions.
+Consider each step relative to ALL other steps, the patient's medical record, and the final reasoning goal. If a step matches multiple types, pick the one that best reflects its contribution to the reasoning goal. Maintain objectivity; avoid subjective assumptions.
 
-# Output Requirements
-- Only output your classification of the current thinking step, with possible values being "Citation| Repetition|Reasoning|Redundancy".
-- Do not output any other content.
+# Output Format (JSON)
+{"assessments": [{"step_id": 1, "classification": "Citation", "rationale": "short reason"}, ...]}
 
-# Output Format
-Choose one from "Citation", "Repetition", "Reasoning", and "Redundancy".
+Rules:
+- Return ONE entry per input step, using the SAME step numbers as step_id.
+- "classification" must be exactly one of "Citation", "Repetition", "Reasoning", "Redundancy".
+- Keep each rationale under 25 words.
 
-Now, please classify the following input based on the instructions above:
-[Current Thinking Step]
-[All Previous Thinking Steps]
-[Known Patient Medical Record]
-[Final Reasoning Goal]
-
-Here's an example of the reasoning step and its classification:
-Imagine a patient case where a 25-year-old presents with a high fever, a severe headache, and a stiff neck.
-- ==_Step 1:_== The patient presents with a high fever, severe headache, and stiff neck.
-- ==_Step 2:_== These specific symptoms point toward meningitis.
-- ==_Step 3:_== The patient has a headache.
-- ==_Step 4:_== Meningitis is caused by the inflammation of the brain's blood vessels only.
-- ==_Step 5:_== The patient's eye color is brown.
-
-- ==Step 1== (restating facts): Citation.
-- ==Step 2== (effective new insights): Reasoning.
-- ==Step 3== (repeating past conclusions): Repetition.
-- ==Step 4== (new, but we don't know if it's true yet): Reasoning.
-- ==Step 5== (irrelevant): Redundancy.
+Here is an example classification set for a fictional case:
+{"assessments": [
+ {"step_id": 1, "classification": "Citation", "rationale": "Restates presenting symptoms"},
+ {"step_id": 2, "classification": "Reasoning", "rationale": "Derives meningitis hypothesis"},
+ {"step_id": 3, "classification": "Repetition", "rationale": "Repeats headache fact"},
+ {"step_id": 4, "classification": "Redundancy", "rationale": "Irrelevant unverified claim"},
+ {"step_id": 5, "classification": "Redundancy", "rationale": "Eye color is irrelevant"}
+]}
 """
 
 TREATMENT_EXTRACTION_PROMPT = '''
@@ -131,6 +126,37 @@ Example output:
 {"claims": [{"step_number": 1, "claim": "Patient has adenocarcinoma", "referenced_field": "histology", "actual_value": "Adenocarcinoma", "verdict": "correct"}], "total_claims": 1, "correct_claims": 1, "incorrect_claims": 0, "unsupported_claims": 0, "factuality_score": 100.0}
 """
 
+OUTPUT_FACTUALITY_PROMPT = """
+# Task Description
+You are a clinical factuality auditor for NSCLC therapy AI agents.
+
+You will receive:
+1. **PATIENT_DATA**: The actual clinical record fields of a patient (structured key-value pairs).
+2. **FINAL_OUTPUT** / **TREATMENT_PLAN**: The agent's final output / treatment plan text.
+
+# Your Task
+- Scan the final output and identify every **factual claim** the agent makes about the patient's clinical data.
+- For each claim, check whether it matches PATIENT_DATA.
+- Classify each claim's verdict as: "correct", "incorrect", or "unsupported".
+- Calculate `factuality_score` as `(correct_claims / total_claims) * 100`. If no claims found, set to 100.0.
+
+# Important Rules
+- Only extract claims about patient-specific clinical facts, NOT general medical knowledge.
+- If a field has multiple values or aliases (e.g., "WT" and "Wild-type"), treat them as equivalent.
+- The final output is not step-decomposed, so use step_number = 0 for every claim.
+
+# Output Format (JSON)
+Each claim MUST have exactly these 5 fields:
+- "step_number": integer (0 for the final output)
+- "claim": string (the factual claim text)
+- "referenced_field": string (which clinical field, e.g. "histology", "pdl1_tps")
+- "actual_value": string (the actual value from PATIENT_DATA)
+- "verdict": string (one of: "correct", "incorrect", "unsupported")
+
+Example output:
+{"claims": [{"step_number": 0, "claim": "Patient has adenocarcinoma", "referenced_field": "histology", "actual_value": "Adenocarcinoma", "verdict": "correct"}], "total_claims": 1, "correct_claims": 1, "incorrect_claims": 0, "unsupported_claims": 0, "factuality_score": 100.0}
+"""
+
 FAITHFULNESS_PROMPT = """
 # Task Description
 You are a reasoning consistency auditor for NSCLC therapy AI agents.
@@ -181,7 +207,7 @@ MENTION or DISCUSS this clinical factor. Extract the value the agent used
    specific sites (brain, liver, bone, etc.)
 6. IO biomarkers — actionable mutations (EGFR, ALK, ROS1, BRAF, KRAS, etc.)
 7. Stage — TNM staging or overall clinical stage (I–IV)
-8. CT/IO drug contraindications — autoimmune disease, ILD, IBD, 
+8. CT/IO drug contraindications — autoimmune disease, ILD, IBD,
    immunosuppressive meds, corticosteroids
 
 # Output Format (JSON)
@@ -191,7 +217,7 @@ MENTION or DISCUSS this clinical factor. Extract the value the agent used
       "checklist_item": "histology",
       "mentioned": true,
       "extracted_value": "adenocarcinoma",
-      "rationale": "Step 1 explicitly states the patient has adenocarcinoma",
+      "rationale": "Step 1 explicitly states adenocarcinoma",
       "step_numbers": [1, 3]
     }
   ]
@@ -216,11 +242,11 @@ Provide a brief rationale explaining your judgment.
 2. PD-L1 — PD-L1 expression level (TPS or category)
 3. ECOG PS — performance status score
 4. Comorbidities — any comorbid conditions discussed
-5. Disease burden — extent of metastatic spread, tumor measurements, 
+5. Disease burden — extent of metastatic spread, tumor measurements,
    specific sites (brain, liver, bone, etc.)
 6. IO biomarkers — actionable mutations (EGFR, ALK, ROS1, BRAF, KRAS, etc.)
 7. Stage — TNM staging or overall clinical stage (I–IV)
-8. CT/IO drug contraindications — autoimmune disease, ILD, IBD, 
+8. CT/IO drug contraindications — autoimmune disease, ILD, IBD,
    immunosuppressive meds, corticosteroids
 
 # Output Format (JSON)
@@ -230,7 +256,7 @@ Provide a brief rationale explaining your judgment.
       "checklist_item": "histology",
       "mentioned": true,
       "extracted_value": "adenocarcinoma",
-      "rationale": "The treatment plan references adenocarcinoma when justifying the choice"
+      "rationale": "Plan references adenocarcinoma when justifying choice"
     }
   ]
 }
@@ -245,7 +271,7 @@ You will receive:
 2. REASONING_STEPS: Numbered reasoning steps produced by the AI agent.
 
 # Your Task
-Evaluate each reasoning step against the GUIDELINES_GROUND_TRUTH. 
+Evaluate each reasoning step against the GUIDELINES_GROUND_TRUTH.
 For each step, determine if it adheres to the guidelines (True/False):
 - Set to `True` if the step correctly applies the guidelines.
 - Set to `True` if the step is just stating patient facts (Neutral steps do not violate guidelines).
@@ -253,3 +279,21 @@ For each step, determine if it adheres to the guidelines (True/False):
 
 Provide a brief rationale for your judgment.
 '''
+
+CONCISE_NOTE = ("\n\n# Brevity Requirement\n"
+                "Keep every rationale/explanation under 25 words. Never repeat input text verbatim.\n")
+for _p in ["FACTUALITY_PROMPT", "OUTPUT_FACTUALITY_PROMPT", "FAITHFULNESS_PROMPT",
+           "REASONING_COMPLETENESS_PROMPT", "TREATMENT_PLAN_COMPLETENESS_PROMPT",
+           "GUIDELINE_ADHERENCE_PROMPT"]:
+    globals()[_p] = globals()[_p] + CONCISE_NOTE
+
+
+# ── prompt-override hook (sensitivity testing) ────────────────────────────────
+# Metric functions read prompts via P("<CONSTANT>") so a variant can be injected
+# per-run without touching pipeline code. ACTIVE_PROMPTS is swapped inside the
+# sensitivity runner's `with use_prompt_overrides(...)` block.
+ACTIVE_PROMPTS = {}
+
+
+def P(name):
+    return ACTIVE_PROMPTS.get(name, globals().get(name, ""))

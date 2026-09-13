@@ -1,19 +1,19 @@
 """Data loading: patient records, therapy decisions and ground-truth labels.
 
-Parses the agent-produced patient JSON files produced by the upstream
-NSCLC agent pipeline and maps them onto :class:`PatientRecord`, extracts the
-final structured therapy decision, and loads the ground-truth labels used by
-the Tier 2 accuracy metric.
+Parses the agent-produced patient JSON files produced by the upstream NSCLC
+agent pipeline and maps them onto :class:`PatientRecord`, extracts the final
+structured therapy decision, loads the ground-truth labels used by the Tier 2
+accuracy metric, and resolves the guideline ground truth used by GAR.
 """
 
 from __future__ import annotations
 
 import json
-import os
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from . import config
 from .models import PatientRecord
 
 
@@ -114,8 +114,13 @@ def load_patient_record(json_file_path: str) -> PatientRecord:
             "step5_decision", {}).get("model") or "Not found"
     )
 
-    raw_reasoning = _normalize_text_value(pipeline_data.get(
-        "therapy_decision", {}).get("reasoning_steps"))
+    raw_steps = pipeline_data.get("therapy_decision", {}).get("reasoning_steps")
+    reasoning_steps: List[str] = (
+        [_normalize_text_value(s) for s in raw_steps if _normalize_text_value(s)]
+        if isinstance(raw_steps, list) else []
+    )
+
+    raw_reasoning = _normalize_text_value(raw_steps)
     if not raw_reasoning:
         step5_logs = pipeline_data.get("step5_logs", [{}])
         if step5_logs and isinstance(step5_logs[0], dict):
@@ -130,6 +135,7 @@ def load_patient_record(json_file_path: str) -> PatientRecord:
         orchestration_model_name=orchestration_model_name,
         raw_reasoning=raw_reasoning,
         final_decision=final_decision,
+        reasoning_steps=reasoning_steps,
     )
 
 
@@ -156,3 +162,58 @@ def load_ground_truth(gt_csv_path: str) -> Dict[str, Any]:
         val = row["IO_IOCT"]
         gt_mapping[subject_id] = val
     return gt_mapping
+
+
+# ---------------------------------------------------------------------
+# Guideline ground truth (GAR)
+# ---------------------------------------------------------------------
+
+def _format_guidelines_context(gc: Any) -> str:
+    """Flatten the structured ``guidelines_context`` dict into readable text."""
+    if not isinstance(gc, dict):
+        return _normalize_text_value(gc)
+    parts = []
+    for key, label in [("all_sources", "ALL SOURCES CONSULTED"),
+                       ("recommended_therapies", "RECOMMENDED THERAPIES"),
+                       ("excluded_therapies", "EXCLUDED THERAPIES"),
+                       ("raw_analysis", "ANALYSIS")]:
+        val = _normalize_text_value(gc.get(key))
+        if val:
+            parts.append(f"{label}: {val}")
+    return "\n".join(parts)
+
+
+def _extract_retrieved_guidelines(pipeline_data: Optional[Dict]) -> str:
+    """Legacy fallback: verbatim guideline PDF text from raw_messages tool calls."""
+    if not pipeline_data:
+        return ""
+    chunks = []
+    for msg in pipeline_data.get("raw_messages", []):
+        if isinstance(msg, dict) and msg.get("type") == "tool" and msg.get("name") == "retrieve_medical_documents":
+            content = msg.get("content", "")
+            if content:
+                chunks.append(str(content))
+    return "\n\n".join(chunks)
+
+
+def extract_guideline_ground_truth(pipeline_data: Optional[Dict]) -> Tuple[str, str]:
+    """Priority chain for GAR ground truth (fixes the ~14% missing GAR):
+
+    1. ``guidelines_context`` (structured, most reliable)
+    2. ``step3_output`` (compiled guideline text)
+    3. ``raw_messages`` retrieve_medical_documents tool content
+
+    Returns ``(text_capped_at_GUIDELINE_CHAR_CAP, source)`` where source is one
+    of ``{"guidelines_context", "step3_output", "raw_messages", "none"}``.
+    """
+    pd_ = pipeline_data or {}
+    gc_text = _format_guidelines_context(pd_.get("guidelines_context")).strip()
+    if gc_text:
+        return gc_text[:config.GUIDELINE_CHAR_CAP], "guidelines_context"
+    so_text = str(pd_.get("step3_output") or "").strip()
+    if so_text:
+        return so_text[:config.GUIDELINE_CHAR_CAP], "step3_output"
+    rm_text = _extract_retrieved_guidelines(pd_).strip()
+    if rm_text:
+        return rm_text[:config.GUIDELINE_CHAR_CAP], "raw_messages"
+    return "", "none"

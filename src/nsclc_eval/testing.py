@@ -25,11 +25,14 @@ from .models import (
     EfficiencyCategory,
     FactualClaim,
     FactualityResult,
+    FaithfulnessResult,
     GuidelineAdherenceResult,
     GuidelineAdherenceStep,
     MentionedItem,
     ReasoningCompletenessExtraction,
     StepClassification,
+    StepClassificationBatch,
+    TreatmentCategory,
 )
 
 COMPLETENESS_CHECKLIST = [
@@ -41,6 +44,12 @@ COMPLETENESS_CHECKLIST = [
     "io_biomarkers",
     "stage",
     "contraindications",
+]
+
+_MOCK_STEPS = [
+    "The patient presents with the clinical findings described in the record.",
+    "These findings are weighed against first-line treatment guidelines.",
+    "A treatment recommendation is derived from the available evidence.",
 ]
 
 
@@ -63,12 +72,14 @@ def _has_chemo(text: str) -> bool:
     )
 
 
+def _count_steps(text: str) -> int:
+    n = len(re.findall(r"<Step\s*\d+>", text))
+    return n or len(_MOCK_STEPS)
+
+
 class MockLLMClient:
     """A deterministic fake of the OpenAI client used by the framework."""
 
-    # ------------------------------------------------------------------
-    # Nested objects mimicking openai.ChatCompletion
-    # ------------------------------------------------------------------
     class _Completions:
         def __init__(self, owner: "MockLLMClient", beta: bool):
             self._owner = owner
@@ -77,15 +88,15 @@ class MockLLMClient:
         def create(self, model: str, messages: List[dict], **kwargs):
             content = self._owner._generate_content(messages)
             return SimpleNamespace(
-                choices=[SimpleNamespace(
-                    message=SimpleNamespace(content=content))]
+                choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+                usage=SimpleNamespace(completion_tokens=128),
             )
 
         def parse(self, model: str, messages: List[dict], response_format: Any, **kwargs):
             parsed = self._owner._generate_parsed(messages, response_format)
             return SimpleNamespace(
-                choices=[SimpleNamespace(
-                    message=SimpleNamespace(parsed=parsed))]
+                choices=[SimpleNamespace(message=SimpleNamespace(parsed=parsed))],
+                usage=SimpleNamespace(completion_tokens=128),
             )
 
     class _Beta:
@@ -103,7 +114,7 @@ class MockLLMClient:
         return SimpleNamespace(completions=self._Completions(self, beta=False))
 
     @property
-    def beta(self) -> "_MockLLMClient._Beta":
+    def beta(self) -> "MockLLMClient._Beta":
         return self._Beta(self)
 
     # ------------------------------------------------------------------
@@ -111,23 +122,28 @@ class MockLLMClient:
     # ------------------------------------------------------------------
     def _generate_content(self, messages: List[dict]) -> str:
         """Produce atomic-step text for the reformat stage."""
-        user = _last_user_message(messages)
-        # Keep it deterministic and independent of the real content.
-        return (
-            "<Step 1> The patient presents with the clinical findings described in the record.\n"
-            "<Step 2> These findings are weighed against first-line treatment guidelines.\n"
-            "<Step 3> A treatment recommendation is derived from the available evidence."
-        )
+        return "\n".join(f"<Step {i}> {s}" for i, s in enumerate(_MOCK_STEPS, 1))
 
     def _generate_parsed(self, messages: List[dict], response_format: Any):
         """Instantiate the requested Pydantic model with plausible values."""
         user = _last_user_message(messages)
 
+        if response_format is StepClassificationBatch:
+            n = _count_steps(user)
+            return StepClassificationBatch(
+                assessments=[
+                    StepClassification(
+                        step_id=i,
+                        classification=EfficiencyCategory.REASONING,
+                        rationale="Derives a conclusion that advances the reasoning.",
+                    )
+                    for i in range(1, n + 1)
+                ]
+            )
+
         if response_format is StepClassification:
             return StepClassification(
                 step_id=1,
-                original_text="The patient presents with clinical findings.",
-                claim="The patient presents with clinical findings.",
                 classification=EfficiencyCategory.REASONING,
                 rationale="Derives a conclusion that advances the reasoning.",
             )
@@ -137,9 +153,7 @@ class MockLLMClient:
             return AccuracyExtraction(
                 raw_prediction=user,
                 predicted_label=predicted,
-                category="Immunotherapy + Chemotherapy (IOCT)"
-                if predicted == 1
-                else "Immunotherapy alone (IO)",
+                category=TreatmentCategory.IOCT if predicted == 1 else TreatmentCategory.IO,
                 rationale="Mock heuristic based on the presence of chemotherapy agents.",
             )
 
@@ -185,9 +199,6 @@ class MockLLMClient:
                     )
                 ]
             )
-
-        # FaithfulnessResult (or anything unhandled) -> default
-        from .models import FaithfulnessResult
 
         return FaithfulnessResult(
             contradictions=[],
