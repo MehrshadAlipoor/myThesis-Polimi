@@ -107,8 +107,8 @@ schema hallucinations.
 ### 1. Install
 
 ```bash
-git clone https://github.com/AI-ON-Laboratory/2026_Alipoor_AgentEvalFramework.git
-cd 2026_Alipoor_AgentEvalFramework
+git clone https://github.com/MehrshadAlipoor/myThesis-Polimi.git
+cd myThesis-Polimi
 pip install -e .            # or: pip install -r requirements.txt
 ```
 
