@@ -92,3 +92,9 @@ tmp/
 temp/
 scratch_*.py
 temp_*.py
+
+# De-identified benchmark data for Andrea's A40 benchmark (andrea_test branch)
+# Must be LAST to override 175-* and *.csv patterns
+!data/deidentified/
+!data/deidentified/**
+!data/deidentified/*.csv
