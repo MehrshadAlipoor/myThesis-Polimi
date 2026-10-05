@@ -161,10 +161,44 @@ Per-patient JSONs and summaries are written under
 (completeness, GAR, treatment completeness, output factuality, binary accuracy);
 pass `--no-reuse-invariant` to run the complete pipeline for every variant.
 
+## External benchmark (A. Sassella — A40 40 GB)
+
+A dedicated branch `andrea_test` contains a **de-identified benchmark cohort** (5 patients × 4 orchestrators = 20 evaluation files, ~0.3 MB total) plus a turnkey benchmark script. This allows Andrea Sassella to reproduce the judge-side latency matrix on an A40 40 GB GPU and report per-judge per-patient latency.
+
+**What's in the branch**
+- `data/deidentified/` — 20 patient JSONs (5 patients × 4 orchestrators) + `ground_truth.csv` (Subject;IO_IOCT). All identifiers removed; clinical content preserved.
+- `scripts/run_benchmark.py` — turnkey benchmark script (7 metrics, GAR excluded, no sensitivity).
+- `scripts/deidentify_patients.py` — reproducible de-identification script (parameterized via `--src`/`--dst`).
+
+**Prerequisites**
+- NVIDIA GPU (A40 40 GB) with recent driver
+- Docker + NVIDIA Container Toolkit
+- GGUF weights matching `config/models.ini` (`gpt-oss-20b-F16.gguf`, `Qwen3-30B-A3B-Thinking-2507-Q4_K_M.gguf`, `Nemotron-3-Nano-30B-A3B-Q4_K_M.gguf`, `Baichuan-M2-32B.Q4_K_M.gguf`, `HuatuoGPT-3-32B.Q4_K_M.gguf`). Place them in one host folder and export:
+  ```bash
+  export NSCLC_EVAL_DOCKER_VOLUME=/abs/path/to/ggufs:/models
+  ```
+
+**Run the benchmark** (7 core metrics: RES, Reasoning Completeness, Factuality, Faithfulness, Binary Accuracy, Treatment Completeness, Output Factuality; **GAR excluded**)
+```bash
+python scripts/run_benchmark.py
+# Quick baselines:
+python scripts/run_benchmark.py --judges gpt-oss-20b qwen3-30B-A3B-Thinking
+python scripts/run_benchmark.py --judges baichuan-m2-32b --max-files 1
+```
+The script restarts the `llama-cpp-server` container per judge (VRAM flush). Per-patient wall time is recorded in `evaluation_settings.patient_processing_time_sec`. A per-judge × per-patient latency table is printed at the end.
+
+**Future step (not part of this test): vLLM migration**
+When we migrate to vLLM, two things need sizing:
+- Structured output — the pipeline uses `client.beta.chat.completions.parse(response_format=<Pydantic>)`. vLLM exposes `response_format={"type":"json_schema",…}` on `/v1/chat/completions`, not the OpenAI beta `parse` endpoint; a thin shim is needed (schemas live in `src/nsclc_eval/models.py`).
+- `thinking_budget_tokens` is llama.cpp-only; vLLM uses `--max-model-len` / sampling instead.
+
+---
+
 ## Privacy & Data Handling
 
 * The repository contains **no real patient data**.
 * `data/sample/` holds **synthetic** patients fabricated for the demo.
+* `data/deidentified/` holds **de-identified** patients for external benchmarking (no names, dates, hospital IDs, or medical images).
 * `results/session_2026-07-16/` contains **anonymized** aggregate summaries
   (patient IDs replaced with `P01`…`P20`, file paths redacted).
 * The `.gitignore` excludes real data directories (`data/*`, `eval/`, `*.csv`,
